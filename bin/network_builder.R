@@ -101,9 +101,9 @@ df <- read.csv(input_file) %>%
 # Validate sample sets
 nonoverlaping_samples <- setdiff(unique(df$SampleID), unique(df_meta$SampleID))
 if(length(nonoverlaping_samples) > 0){
-    cat("\nWARNING: some samples are missing from metadata or gene-abundnace table:\n")
+    cat("\nWARNING: some samples are missing from metadata or gene-abundance table:\n")
     cat("  n = ", length(nonoverlaping_samples), "; ", paste(nonoverlaping_samples, collapse = ", "), "\n")
-    cat(".. Subsetting to a commont set\n")
+    cat(".. Subsetting to a common sample set\n")
 
     samples_in_common <- intersect(unique(df$SampleID), unique(df_meta$SampleID))
     if(length(samples_in_common) == 0){ stop("ERROR: no samples in common!\n") }
