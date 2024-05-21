@@ -61,7 +61,7 @@ if(selected_meta_columns %in% "NA"){ selected_meta_columns <- NA }
 if(is.na(selected_meta_columns)){
     selected_meta_columns <- colnames(df_meta)[ ! colnames(df_meta) %in% "SampleID" ]
 } else {
-    selected_meta_columns <- strsplit(c, split = ",")[[1]]
+    selected_meta_columns <- strsplit(selected_meta_columns, split = ",")[[1]]
 }
 
 # Subset metadata
