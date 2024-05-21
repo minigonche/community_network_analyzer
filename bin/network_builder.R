@@ -101,9 +101,9 @@ df <- read.csv(input_file) %>%
 # Validate sample sets
 nonoverlaping_samples <- setdiff(unique(df$SampleID), unique(df_meta$SampleID))
 if(length(nonoverlaping_samples) > 0){
-    cat("WARNING: some samples are missing from metadata or gene-abundnace table\n")
+    cat("\nWARNING: some samples are missing from metadata or gene-abundnace table:\n")
     cat("  n = ", length(nonoverlaping_samples), "; ", paste(nonoverlaping_samples, collapse = ", "), "\n")
-    cat("WARNING: subsetting to a commont set\n")
+    cat(".. Subsetting to a commont set\n")
 
     samples_in_common <- intersect(unique(df$SampleID), unique(df_meta$SampleID))
     if(length(samples_in_common) == 0){ stop("ERROR: no samples in common!\n") }
@@ -125,17 +125,19 @@ df <- df %>% select(-SampleID)
 
 # Drops genes that are not present in any sample
 col_sums <- colSums(df)
-col_sums = col_sums[col_sums == 0]
-all_zero_genes = names(col_sums)
+col_sums <- col_sums[col_sums == 0]
+all_zero_genes <- names(col_sums)
 
 df <- df %>%
   select(-all_of(all_zero_genes))
 
 # Converts to matrix 
-X <- df %>% as.matrix()
+X <- as.matrix(df)
 
 # Runs Spring
-fit.spring <- SPRING(
+cat("\nRunning SPRING\n")
+fit.spring <- suppressPackageStartupMessages(
+    SPRING(
     X,
     Rmethod = "approx",
     quantitative = TRUE,
@@ -144,9 +146,10 @@ fit.spring <- SPRING(
     rep.num = 50,
     verbose = FALSE,
     seed = seed
-)
+    ))
 
 # Uses SpiecEasi to invert the similarity matrix
+cat("Inverting similarity matrix\n")
 opt.K <- fit.spring$output$stars$opt.index
 pcor.K <- as.matrix(
     SpiecEasi::symBeta(
@@ -161,14 +164,13 @@ df_matrix <- pcor.K
 if (only_positive)
     df_matrix[df_matrix < 0] <- 0
 
-# Converts to Tibble 
-df_matrix <- as_tibble(df_matrix)
-
+## Assign column and row names
 colnames(df_matrix) <- colnames(df)
 rownames(df_matrix) <- colnames(df)
 
 # Creates the Graph
-g <- graph_from_adjacency_matrix(as.matrix(df_matrix), weighted = TRUE, mode = "undirected")
+cat("Costructing a graph\n")
+g <- graph_from_adjacency_matrix(df_matrix, weighted = TRUE, mode = "undirected")
 
 # Creates the different versions of the graph
 # Only Positive
@@ -185,6 +187,7 @@ g = set_graph_attr(g, "density", edge_density(pos_g))
 g = set_graph_attr(g, "avg_weight", mean(E(pos_g)$weight))
 
 # Modularity
+cat("Estimating modularity\n")
 communities <- igraph::cluster_fast_greedy(pos_g, 
                                            weights = E(pos_g)$weight, 
                                            merges = TRUE, 
@@ -203,10 +206,13 @@ mdf <- SPRING::mclr(df, base = exp(1), tol = 1e-16, eps = NULL, atleast = 1)
 ## Constrained ordination (db-RDA)
 formula <- as.formula(paste("mdf", "~", paste(final_meta_columns, collapse = " + ")))
 
+cat("Running db-RDA\n")
 cap <- capscale(
   formula,
   distance = "euclidean",
   data = df_meta)
+
+cat(".. number of constrained axes: ", length(cap$CCA$eig), "\n")
 
 ## Extract scores
 capscores <- data.frame(
