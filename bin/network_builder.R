@@ -217,7 +217,7 @@ cat(".. number of constrained axes: ", length(cap$CCA$eig), "\n")
 ## Extract scores
 capscores <- data.frame(
   GeneID = rownames(cap$CCA$v),
-  scores(cap, display = "species", choices = seq(1, length(final_meta_columns))))
+  scores(cap, display = "species", choices = 1:length(cap$CCA$eig)))
 
 ## Add CAP scores as node attributes
 node_labs <- V(g)$name
