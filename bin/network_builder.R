@@ -72,12 +72,21 @@ df_meta <- as.data.frame(df_meta)
 
 rownames(df_meta) <- df_meta$SampleID
 
-# Removes NA Columns
+## Handle missing data in metadata
+nacolz <- colSums(is.na(df_meta)) != 0
+if(any(nacolz)){
+    cat("\nWARNING: There are ", sum(nacolz), "columns with missing data:\n")
+    cat("  ", paste(colnames(df_meta)[ nacolz ], collapse = ", "), "\n")
+
 if(replace_missing == FALSE){
-    df_meta <- df_meta[, colSums(is.na(df_meta)) == 0]
+        ## Removes NA Columns
+        cat(".. These columns will be removed\n")
+        df_meta <- df_meta[, ! nacolz ]
 } else {
     ## Replace missing values in metadata
+        # cat(".. Imputing missing values\n")
     # df_meta <- pca_impute(...)
+    }
 }
 
 # Metadata variables that will be used for ordination
