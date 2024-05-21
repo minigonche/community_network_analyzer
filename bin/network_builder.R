@@ -1,5 +1,13 @@
 #!/usr/bin/env Rscript
 
+## Usage
+# Rscript network_builder.R \
+#  --input_file gene_abundances_long.csv \
+#  --only_positive TRUE \
+#  --metadata_file sample_metadata.xlsx \
+#  --replace_missing FALSE \
+#  --metadata_cols "CN,H2O_content_volumetric,Annual_Precipitation,Annual_Mean_Temperature"
+
 
 load_pckg <- function(pkg = "data.table"){
     suppressPackageStartupMessages( library(package = pkg, character.only = TRUE) )
