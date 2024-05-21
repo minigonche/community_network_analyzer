@@ -1,14 +1,19 @@
 #!/usr/bin/env Rscript
 
-# SPRING Testing
-library(SPRING)
-library(tidyr)
-library(dplyr)
-library(vegan)
-library(igraph)
-library(optparse)
-library(readxl)
-library(missMDA)
+
+load_pckg <- function(pkg = "data.table"){
+    suppressPackageStartupMessages( library(package = pkg, character.only = TRUE) )
+    cat(paste(pkg, packageVersion(pkg), "\n"))
+}
+
+load_pckg("SPRING")
+load_pckg("tidyr")
+load_pckg("dplyr")
+load_pckg("vegan")
+load_pckg("igraph")
+load_pckg("optparse")
+load_pckg("readxl")
+load_pckg("missMDA")
 
 
 seed <- 42
