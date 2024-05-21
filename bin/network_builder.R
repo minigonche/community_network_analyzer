@@ -220,6 +220,7 @@ capscores <- data.frame(
   scores(cap, display = "species", choices = 1:length(cap$CCA$eig)))
 
 ## Add CAP scores as node attributes
+cat("Adding db-RDA scores to graph\n")
 node_labs <- V(g)$name
 for(i in seq(1, length(cap$CCA$eig))){
     capCol = paste("CAP", i, sep = "")
@@ -245,7 +246,7 @@ for(i in seq(1, length(cap$CCA$eig))){
 
 }
 
-
 # Writes Graph
+cat("\nExporting graph\n")
 write_graph(g,  gsub(".csv", ".graphml", input_file), "graphml")
 
