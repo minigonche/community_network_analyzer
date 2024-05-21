@@ -35,7 +35,7 @@ option_list <- list(
     make_option(c("--replace_missing"),
         type = "logical", default = FALSE, 
         help = "Replace missing metadata"
-    ), 
+    )
 )
 
 # Parse the command line arguments
@@ -52,14 +52,15 @@ replace_missing <- opt$replace_missing
 df_meta <- read_excel(metadata_file)
 
 # Split metadata columns
+if(selected_meta_columns %in% "NA"){ selected_meta_columns <- NA }
 if(is.na(selected_meta_columns)){
-    selected_meta_columns <- colnames(metadata_file)[ ! colnames(metadata_file) %in% "SampleID" ]
+    selected_meta_columns <- colnames(df_meta)[ ! colnames(df_meta) %in% "SampleID" ]
 } else {
     selected_meta_columns <- strsplit(c, split = ",")[[1]]
 }
 
 # Subset metadata
-df_meta  %>%
+df_meta <- df_meta  %>%
     select("SampleID", all_of(selected_meta_columns))
 
 df_meta <- as.data.frame(df_meta)
@@ -74,9 +75,9 @@ if(replace_missing == FALSE){
     # df_meta <- pca_impute(...)
 }
 
+# Metadata variables that will be used for ordination
 final_meta_columns <- colnames(df_meta)
 final_meta_columns <- final_meta_columns[ ! final_meta_columns %in% "SampleID" ]
-
 
 # Load gene abundances, Reads and removes unused columns
 df <- read.csv(input_file) %>%
