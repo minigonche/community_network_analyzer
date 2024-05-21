@@ -221,18 +221,25 @@ capscores <- data.frame(
 
 ## Add CAP scores as node attributes
 node_labs <- V(g)$name
-for(i in seq(1, length(final_meta_columns)))
-{
+for(i in seq(1, length(cap$CCA$eig))){
     capCol = paste("CAP", i, sep = "")
+    
     # Adds value
-    g <- set_vertex_attr(g, capCol, index = node_labs, capscores[ match(x = node_labs, table = capscores$GeneID), capCol ])
+    g <- set_vertex_attr(
+        g,
+        capCol,
+        index = node_labs, capscores[ match(x = node_labs, table = capscores$GeneID), capCol ]
+        )
 
     # Adds Assortativity
-    g <- set_graph_attr(g, paste("assortativity",capCol, sep = "_"), igraph::assortativity(pos_g, values = vertex_attr(g, capCol, index = V(g))))
+    g <- set_graph_attr(
+        g,
+        paste("assortativity", capCol, sep = "_"),
+        igraph::assortativity(pos_g, values = vertex_attr(g, capCol, index = V(g)))
+        )
 
     # Add the biplot values for projection of the CAP values
-    for(col in final_meta_columns)
-    {
+    for(col in rownames(cap$CCA$biplot)){
         g <- set_graph_attr(g, paste(capCol, col, sep = "-"), cap$CCA$biplot[col, capCol])
     }
 
