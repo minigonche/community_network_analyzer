@@ -26,7 +26,16 @@ option_list <- list(
     make_option(c("--metadata_file"),
         type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples.xlsx", # nolint
         help = "Location of the metadata file"
-    )  
+    ),
+    make_option(c("--metadata_cols"),
+        type = "character",
+        default = NA,
+        help = "Selected metadata columns (comma-separated)"
+    ),
+    make_option(c("--replace_missing"),
+        type = "logical", default = FALSE, 
+        help = "Replace missing metadata"
+    ), 
 )
 
 # Parse the command line arguments
@@ -36,26 +45,56 @@ opt <- parse_args(OptionParser(option_list = option_list))
 input_file <- opt$input_file
 only_positive <- opt$only_positive
 metadata_file <- opt$metadata_file
+selected_meta_columns <- opt$metadata_cols
+replace_missing <- opt$replace_missing
 
+# Load metadata
+df_meta <- read_excel(metadata_file)
 
-# Reads Metadata
-df_meta <- read_excel(metadata_file)  %>%
+# Split metadata columns
+if(is.na(selected_meta_columns)){
+    selected_meta_columns <- colnames(metadata_file)[ ! colnames(metadata_file) %in% "SampleID" ]
+} else {
+    selected_meta_columns <- strsplit(c, split = ",")[[1]]
+}
+
+# Subset metadata
+df_meta  %>%
     select("SampleID", all_of(selected_meta_columns))
 
 df_meta <- as.data.frame(df_meta)
 
-rownames(df_meta) = df_meta$SampleID
+rownames(df_meta) <- df_meta$SampleID
 
 # Removes NA Columns
-df_meta <- df_meta[, colSums(is.na(df_meta)) == 0]
+if(replace_missing == FALSE){
+    df_meta <- df_meta[, colSums(is.na(df_meta)) == 0]
+} else {
+    ## Replace missing values in metadata
+    # df_meta <- pca_impute(...)
+}
 
-final_meta_columns = colnames(df_meta)
-final_meta_columns = final_meta_columns[final_meta_columns != "SampleID"]
+final_meta_columns <- colnames(df_meta)
+final_meta_columns <- final_meta_columns[ ! final_meta_columns %in% "SampleID" ]
 
 
-# Reads and removes unused columns
+# Load gene abundances, Reads and removes unused columns
 df <- read.csv(input_file) %>%
-    select("SampleID", "Gene","Abundance")
+    select("SampleID", "Gene", "Abundance")
+
+
+# Validate sample sets
+nonoverlaping_samples <- setdiff(unique(df$SampleID), unique(df_meta$SampleID))
+if(length(nonoverlaping_samples) > 0){
+    cat("WARNING: some samples are missing from metadata or gene-abundnace table\n")
+    cat("  n = ", length(nonoverlaping_samples), "; ", paste(nonoverlaping_samples, collapse = ", "), "\n")
+    cat("WARNING: subsetting to a commont set\n")
+
+    samples_in_common <- intersect(unique(df$SampleID), unique(df_meta$SampleID))
+    if(length(samples_in_common) == 0){ stop("ERROR: no samples in common!\n") }
+    df <- df[ df$SampleID %in% samples_in_common,  ]
+    df_meta <- df_meta[ df_meta$SampleID %in% samples_in_common,  ]
+}
 
 # Pivots
 # Genes as Columns
@@ -174,7 +213,6 @@ for(i in seq(1, length(final_meta_columns)))
     for(col in final_meta_columns)
     {
         g <- set_graph_attr(g, paste(capCol, col, sep = "-"), cap$CCA$biplot[col, capCol])
-   
     }
 
 }
