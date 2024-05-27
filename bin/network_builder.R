@@ -1,14 +1,27 @@
 #!/usr/bin/env Rscript
 
-# SPRING Testing
-library(SPRING)
-library(tidyr)
-library(dplyr)
-library(vegan)
-library(igraph)
-library(optparse)
-library(readxl)
-library(missMDA)
+## Usage
+# Rscript network_builder.R \
+#  --input_file gene_abundances_long.csv \
+#  --only_positive TRUE \
+#  --metadata_file sample_metadata.xlsx \
+#  --replace_missing FALSE \
+#  --metadata_cols "CN,H2O_content_volumetric,Annual_Precipitation,Annual_Mean_Temperature"
+
+
+load_pckg <- function(pkg = "data.table"){
+    suppressPackageStartupMessages( library(package = pkg, character.only = TRUE) )
+    cat(paste(pkg, packageVersion(pkg), "\n"))
+}
+
+load_pckg("SPRING")
+load_pckg("tidyr")
+load_pckg("dplyr")
+load_pckg("vegan")
+load_pckg("igraph")
+load_pckg("optparse")
+load_pckg("readxl")
+load_pckg("missMDA")
 
 
 seed <- 42
@@ -26,7 +39,16 @@ option_list <- list(
     make_option(c("--metadata_file"),
         type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples.xlsx", # nolint
         help = "Location of the metadata file"
-    )  
+    ),
+    make_option(c("--metadata_cols"),
+        type = "character",
+        default = NA,
+        help = "Selected metadata columns (comma-separated)"
+    ),
+    make_option(c("--replace_missing"),
+        type = "logical", default = FALSE, 
+        help = "Replace missing metadata"
+    )
 )
 
 # Parse the command line arguments
@@ -36,26 +58,66 @@ opt <- parse_args(OptionParser(option_list = option_list))
 input_file <- opt$input_file
 only_positive <- opt$only_positive
 metadata_file <- opt$metadata_file
+selected_meta_columns <- opt$metadata_cols
+replace_missing <- opt$replace_missing
 
+# Load metadata
+df_meta <- read_excel(metadata_file)
 
-# Reads Metadata
-df_meta <- read_excel(metadata_file)  %>%
+# Split metadata columns
+if(selected_meta_columns %in% "NA"){ selected_meta_columns <- NA }
+if(is.na(selected_meta_columns)){
+    selected_meta_columns <- colnames(df_meta)[ ! colnames(df_meta) %in% "SampleID" ]
+} else {
+    selected_meta_columns <- strsplit(selected_meta_columns, split = ",")[[1]]
+}
+
+# Subset metadata
+df_meta <- df_meta  %>%
     select("SampleID", all_of(selected_meta_columns))
 
 df_meta <- as.data.frame(df_meta)
 
-rownames(df_meta) = df_meta$SampleID
+rownames(df_meta) <- df_meta$SampleID
 
-# Removes NA Columns
-df_meta <- df_meta[, colSums(is.na(df_meta)) == 0]
+## Handle missing data in metadata
+nacolz <- colSums(is.na(df_meta)) != 0
+if(any(nacolz)){
+    cat("\nWARNING: There are ", sum(nacolz), "columns with missing data:\n")
+    cat("  ", paste(colnames(df_meta)[ nacolz ], collapse = ", "), "\n")
 
-final_meta_columns = colnames(df_meta)
-final_meta_columns = final_meta_columns[final_meta_columns != "SampleID"]
+if(replace_missing == FALSE){
+        ## Removes NA Columns
+        cat(".. These columns will be removed\n")
+        df_meta <- df_meta[, ! nacolz ]
+} else {
+    ## Replace missing values in metadata
+        # cat(".. Imputing missing values\n")
+    # df_meta <- pca_impute(...)
+    }
+}
 
+# Metadata variables that will be used for ordination
+final_meta_columns <- colnames(df_meta)
+final_meta_columns <- final_meta_columns[ ! final_meta_columns %in% "SampleID" ]
 
-# Reads and removes unused columns
+# Load gene abundances, Reads and removes unused columns
 df <- read.csv(input_file) %>%
-    select("SampleID", "Gene","Abundance")
+    select("SampleID", "Gene", "Abundance")
+
+
+# Validate sample sets
+nonoverlaping_samples <- setdiff(unique(df$SampleID), unique(df_meta$SampleID))
+if(length(nonoverlaping_samples) > 0){
+    cat("\nWARNING: some samples are missing from metadata or gene-abundance table:\n")
+    cat("  n = ", length(nonoverlaping_samples), "; ", paste(nonoverlaping_samples, collapse = ", "), "\n")
+    cat(".. Subsetting to a common sample set\n")
+
+    samples_in_common <- intersect(unique(df$SampleID), unique(df_meta$SampleID))
+    if(length(samples_in_common) == 0){ stop("ERROR: no samples in common!\n") }
+    df <- df[ df$SampleID %in% samples_in_common,  ]
+    df_meta <- df_meta[ df_meta$SampleID %in% samples_in_common,  ]
+}
 
 # Pivots
 # Genes as Columns
@@ -71,17 +133,19 @@ df <- df %>% select(-SampleID)
 
 # Drops genes that are not present in any sample
 col_sums <- colSums(df)
-col_sums = col_sums[col_sums == 0]
-all_zero_genes = names(col_sums)
+col_sums <- col_sums[col_sums == 0]
+all_zero_genes <- names(col_sums)
 
 df <- df %>%
   select(-all_of(all_zero_genes))
 
 # Converts to matrix 
-X <- df %>% as.matrix()
+X <- as.matrix(df)
 
 # Runs Spring
-fit.spring <- SPRING(
+cat("\nRunning SPRING\n")
+fit.spring <- suppressPackageStartupMessages(
+    SPRING(
     X,
     Rmethod = "approx",
     quantitative = TRUE,
@@ -90,9 +154,10 @@ fit.spring <- SPRING(
     rep.num = 50,
     verbose = FALSE,
     seed = seed
-)
+    ))
 
 # Uses SpiecEasi to invert the similarity matrix
+cat("Inverting similarity matrix\n")
 opt.K <- fit.spring$output$stars$opt.index
 pcor.K <- as.matrix(
     SpiecEasi::symBeta(
@@ -107,14 +172,13 @@ df_matrix <- pcor.K
 if (only_positive)
     df_matrix[df_matrix < 0] <- 0
 
-# Converts to Tibble 
-df_matrix <- as_tibble(df_matrix)
-
+## Assign column and row names
 colnames(df_matrix) <- colnames(df)
 rownames(df_matrix) <- colnames(df)
 
 # Creates the Graph
-g <- graph_from_adjacency_matrix(as.matrix(df_matrix), weighted = TRUE, mode = "undirected")
+cat("Costructing a graph\n")
+g <- graph_from_adjacency_matrix(df_matrix, weighted = TRUE, mode = "undirected")
 
 # Creates the different versions of the graph
 # Only Positive
@@ -131,6 +195,7 @@ g = set_graph_attr(g, "density", edge_density(pos_g))
 g = set_graph_attr(g, "avg_weight", mean(E(pos_g)$weight))
 
 # Modularity
+cat("Estimating modularity\n")
 communities <- igraph::cluster_fast_greedy(pos_g, 
                                            weights = E(pos_g)$weight, 
                                            merges = TRUE, 
@@ -149,37 +214,47 @@ mdf <- SPRING::mclr(df, base = exp(1), tol = 1e-16, eps = NULL, atleast = 1)
 ## Constrained ordination (db-RDA)
 formula <- as.formula(paste("mdf", "~", paste(final_meta_columns, collapse = " + ")))
 
+cat("Running db-RDA\n")
 cap <- capscale(
   formula,
   distance = "euclidean",
   data = df_meta)
 
+cat(".. number of constrained axes: ", length(cap$CCA$eig), "\n")
+
 ## Extract scores
 capscores <- data.frame(
   GeneID = rownames(cap$CCA$v),
-  scores(cap, display = "species", choices = seq(1, length(final_meta_columns))))
+  scores(cap, display = "species", choices = 1:length(cap$CCA$eig)))
 
 ## Add CAP scores as node attributes
+cat("Adding db-RDA scores to graph\n")
 node_labs <- V(g)$name
-for(i in seq(1, length(final_meta_columns)))
-{
+for(i in seq(1, length(cap$CCA$eig))){
     capCol = paste("CAP", i, sep = "")
+    
     # Adds value
-    g <- set_vertex_attr(g, capCol, index = node_labs, capscores[ match(x = node_labs, table = capscores$GeneID), capCol ])
+    g <- set_vertex_attr(
+        g,
+        capCol,
+        index = node_labs, capscores[ match(x = node_labs, table = capscores$GeneID), capCol ]
+        )
 
     # Adds Assortativity
-    g <- set_graph_attr(g, paste("assortativity",capCol, sep = "_"), igraph::assortativity(pos_g, values = vertex_attr(g, capCol, index = V(g))))
+    g <- set_graph_attr(
+        g,
+        paste("assortativity", capCol, sep = "_"),
+        igraph::assortativity(pos_g, values = vertex_attr(g, capCol, index = V(g)))
+        )
 
     # Add the biplot values for projection of the CAP values
-    for(col in final_meta_columns)
-    {
+    for(col in rownames(cap$CCA$biplot)){
         g <- set_graph_attr(g, paste(capCol, col, sep = "-"), cap$CCA$biplot[col, capCol])
-   
     }
 
 }
 
-
 # Writes Graph
+cat("\nExporting graph\n")
 write_graph(g,  gsub(".csv", ".graphml", input_file), "graphml")
 
