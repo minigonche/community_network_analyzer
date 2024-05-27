@@ -1,0 +1,2 @@
+docker build -t minigonche/community_network_analyzer .
+sudo singularity build community_network_analyzer.sif Singularity.def

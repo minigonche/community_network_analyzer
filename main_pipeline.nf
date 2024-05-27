@@ -68,7 +68,7 @@ workflow {
     metadata_file_imputed = pca_impute(metadata_file)
 
     // Splits the files into cycles
-    cycles = channel.from( "S_cycle", "P_cycle")
+    cycles = channel.from( params.cycles)
     divided_file_paths = split_files(cycles, input_folder, metadata_file_imputed)
 
     graph_paths = build_network(divided_file_paths.flatten(), metadata_file_imputed)

@@ -1,5 +1,5 @@
 BootStrap: docker
-From: rocker/r-ver:4.3.2
+From: rocker/tidyverse:4
 
 %labels
     Maintainer "Felipe González Casabianca <minigonche@gmail.com>"
@@ -29,13 +29,14 @@ From: rocker/r-ver:4.3.2
 
   ## Install additional R packages
   install2.r --error --skipinstalled --ncpus -1 \
+    missMDA \
     readxl \
     tidyr \
     dplyr \
     igraph \
     optparse \
     vegan \
-    && R -e 'remotes::install_github("GraceYoon/SPRING)' \
+    && R -e 'devtools::install_github("GraceYoon/SPRING")' \
     && rm -rf /tmp/downloaded_packages/
 
 
