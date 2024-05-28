@@ -23,30 +23,39 @@ load_pckg("optparse")
 load_pckg("readxl")
 load_pckg("missMDA")
 
+source('/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/bin/pca_impute.R', chdir = TRUE)
+
 
 seed <- 42
 
 # Define the option parser
 option_list <- list(
     make_option(c("--input_file"),
-        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/work/3f/cb397522d28413b7c04ca0703fe757/S_cycle-grassland.csv",
+        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/work/ba/10afc8be37ef894256ad78789ff100/P_cycle-grassland.csv",
         help = "Location of the input file"
     ),
     make_option(c("--only_positive"),
         type = "logical", default = FALSE, 
         help = "If the graph should only include positive weights"
     ),  
+    make_option(
+        c("--edge_sign"), 
+        type = "character", 
+        default = "both", 
+        help = "Mode of operation: 'positive', 'negative', or 'both'", 
+        choices = c("positive", "negative", "both"),
+    ),
     make_option(c("--metadata_file"),
-        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples.xlsx", # nolint
+        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples_2.xlsx", # nolint
         help = "Location of the metadata file"
     ),
     make_option(c("--metadata_cols"),
         type = "character",
-        default = NA,
+        default = "MeanTemperature_Avg31day,PrecipitationSum_Avg31day,pH_H2O,Electrical_conductivity,Carbonate_content,Phosphorus_content,CN,Clay_content_imputed,Organic_carbon_imputed,H2O_content_volumetric_imputed,Annual_Precipitation,Annual_Mean_Temperature,Bulk_Density_0_10_cm_imputed,Bulk_Density_10_20_cm_imputed",
         help = "Selected metadata columns (comma-separated)"
     ),
     make_option(c("--replace_missing"),
-        type = "logical", default = FALSE, 
+        type = "logical", default = TRUE, 
         help = "Replace missing metadata"
     )
 )
@@ -56,20 +65,35 @@ opt <- parse_args(OptionParser(option_list = option_list))
 
 # Starts the parameters
 input_file <- opt$input_file
-only_positive <- opt$only_positive
+edge_sign <- opt$edge_sign
 metadata_file <- opt$metadata_file
 selected_meta_columns <- opt$metadata_cols
 replace_missing <- opt$replace_missing
 
 # Load metadata
-df_meta <- read_excel(metadata_file)
+if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
+    df_meta <- read_excel(metadata_file)
+} else {
+   df_meta <- read.csv(metadata_file)
+}
+
+
 
 # Split metadata columns
 if(selected_meta_columns %in% "NA"){ selected_meta_columns <- NA }
 if(is.na(selected_meta_columns)){
     selected_meta_columns <- colnames(df_meta)[ ! colnames(df_meta) %in% "SampleID" ]
 } else {
-    selected_meta_columns <- strsplit(selected_meta_columns, split = ",")[[1]]
+    selected_meta_columns <- unique(strsplit(selected_meta_columns, split = ",")[[1]])
+}
+
+# Filters out columns not in meta file
+missing_cols = setdiff(selected_meta_columns, colnames(df_meta))
+selected_meta_columns = intersect(selected_meta_columns, colnames(df_meta))
+if(length(missing_cols) > 0){
+    cat("\nWARNING: Some metadata columns are not included in the metadata file provided:\n")
+    cat("  ", paste(missing_cols, collapse = ", "), "\n")
+    cat(".. They will not be included in analysis\n")
 }
 
 # Subset metadata
@@ -78,7 +102,6 @@ df_meta <- df_meta  %>%
 
 df_meta <- as.data.frame(df_meta)
 
-rownames(df_meta) <- df_meta$SampleID
 
 ## Handle missing data in metadata
 nacolz <- colSums(is.na(df_meta)) != 0
@@ -86,14 +109,17 @@ if(any(nacolz)){
     cat("\nWARNING: There are ", sum(nacolz), "columns with missing data:\n")
     cat("  ", paste(colnames(df_meta)[ nacolz ], collapse = ", "), "\n")
 
-if(replace_missing == FALSE){
-        ## Removes NA Columns
-        cat(".. These columns will be removed\n")
-        df_meta <- df_meta[, ! nacolz ]
-} else {
-    ## Replace missing values in metadata
-        # cat(".. Imputing missing values\n")
-    # df_meta <- pca_impute(...)
+
+    if(replace_missing == FALSE){
+            ## Removes NA Columns
+            cat(".. These columns will be removed\n")
+            df_meta <- df_meta[, ! nacolz ]
+    } else {
+        # Replace missing values in metadata
+            cat(".. Imputing missing values\n")
+            # Function Call
+            df_meta <- pca_impute(df_meta, selected_meta_columns)
+
     }
 }
 
@@ -118,6 +144,8 @@ if(length(nonoverlaping_samples) > 0){
     df <- df[ df$SampleID %in% samples_in_common,  ]
     df_meta <- df_meta[ df_meta$SampleID %in% samples_in_common,  ]
 }
+
+rownames(df_meta) <- df_meta$SampleID
 
 # Pivots
 # Genes as Columns
@@ -169,8 +197,11 @@ pcor.K <- as.matrix(
 # Creates Object
 df_matrix <- pcor.K
 
-if (only_positive)
+if(edge_sign == "positive")
     df_matrix[df_matrix < 0] <- 0
+    
+if(edge_sign == "negative")
+    df_matrix[df_matrix > 0] <- 0
 
 ## Assign column and row names
 colnames(df_matrix) <- colnames(df)

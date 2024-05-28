@@ -1,19 +1,5 @@
 #!/usr/bin/env nextflow
 
-process pca_impute {
-    input:
-    path metadata_file
-
-
-    output:
-    path "*.csv"
-
-    script:
-    """            
-    pca_impute.R --metadata_file=$metadata_file    
-    """    
-
-}
 
 process split_files {
     input:
@@ -36,6 +22,7 @@ process build_network {
     input:
     path input_file
     path metadata_file
+    val metadata_cols
 
 
     output:
@@ -43,7 +30,7 @@ process build_network {
 
     script:
     """            
-    network_builder.R --input_file=$input_file --metadata_file=$metadata_file    
+    network_builder.R --input_file=$input_file --metadata_file=$metadata_file --metadata_cols=$metadata_cols    
     """    
 
 }
@@ -64,14 +51,13 @@ workflow {
     // Loads the parameters
     input_folder = params.input_folder
     metadata_file = params.metadata_file
-
-    metadata_file_imputed = pca_impute(metadata_file)
+    metadata_cols = params.metadata_cols
 
     // Splits the files into cycles
     cycles = channel.from( params.cycles)
-    divided_file_paths = split_files(cycles, input_folder, metadata_file_imputed)
+    divided_file_paths = split_files(cycles, input_folder, metadata_file)
 
-    graph_paths = build_network(divided_file_paths.flatten(), metadata_file_imputed)
+    graph_paths = build_network(divided_file_paths.flatten(), metadata_file, metadata_cols)
 
     graph_paths.view { it }
 

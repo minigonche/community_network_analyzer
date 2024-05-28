@@ -1,2 +1,7 @@
-docker build -t minigonche/community_network_analyzer .
+docker build --no-cache -t minigonche/community_network_analyzer:latest . 
+docker push minigonche/community_network_analyzer:latest
+
+
 sudo singularity build community_network_analyzer.sif Singularity.def
+singularity sign community_network_analyzer.sif 
+sudo singularity push community_network_analyzer.sif library://minigonche/networks/community_network_analyzer:latest

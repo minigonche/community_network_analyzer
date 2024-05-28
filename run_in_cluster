@@ -3,7 +3,10 @@ cat > network_build.sh <<'EOT'
 #!/bin/bash
 
 export NXF_OPTS="-Xms500M -Xmx2G"
-nextflow run main_pipeline.nf -resume
+export NXF_SINGULARITY_CACHEDIR="/gpfs/space/home/felipe1/Singularity_images/"
+module load singularity/3.6.4
+module load nextflow/22.04.3
+nextflow run main_pipeline.nf -profile singularity
 EOT
 
 #  -qs "$SLURM_NTASKS"
@@ -11,8 +14,9 @@ EOT
 chmod +x network_build.sh
 
 
+
 sbatch \
-  --job-name=itsx -p amd \
+  --job-name=network_build -p amd \
   --ntasks-per-node=1 --nodes=1 \
-  --mem=2G --time 24:00:00 \
+  --mem=2G --time 1:00:00 \
   network_build.sh

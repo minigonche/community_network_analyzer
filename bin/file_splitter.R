@@ -51,7 +51,13 @@ land_cover_options <- c(
 )
 
 # Reads Metadata
-df_meta <- read_excel(metadata_file)
+if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
+    df_meta <- read_excel(metadata_file)
+} else {
+   df_meta <- read.csv(metadata_file)
+}
+
+
 df_meta <- df_meta %>% select("SampleID", all_of(land_cover_column))
 
 # Reads the file

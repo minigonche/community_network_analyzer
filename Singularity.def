@@ -1,5 +1,5 @@
 BootStrap: docker
-From: rocker/tidyverse:4
+From: minigonche/community_network_analyzer:latest
 
 %labels
     Maintainer "Felipe González Casabianca <minigonche@gmail.com>"
@@ -14,31 +14,3 @@ From: rocker/tidyverse:4
 
 %apprun Rscript
   exec Rscript "${@}"
-
-## Install the required dependencies
-%post
-  export R_VERSION=4.3.2
-
-  apt-get update -qq \
-  && apt-get -y --no-install-recommends install \
-    zip unzip locales \
-    curl git wget less \
-    build-essential \
-    libgeos-dev libudunits2-dev libproj-dev libgdal-dev
-
-
-  ## Install additional R packages
-  install2.r --error --skipinstalled --ncpus -1 \
-    missMDA \
-    readxl \
-    tidyr \
-    dplyr \
-    igraph \
-    optparse \
-    vegan \
-    && R -e 'devtools::install_github("GraceYoon/SPRING")' \
-    && rm -rf /tmp/downloaded_packages/
-
-
-%test
-  R --quiet -e "stopifnot(getRversion() == '${R_VERSION}')"

@@ -1,5 +1,6 @@
 .RData
 *.sif
+singularity_images
 
 LUCAS_Funct
 input
