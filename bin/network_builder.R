@@ -43,7 +43,7 @@ option_list <- list(
         type = "character", 
         default = "both", 
         help = "Mode of operation: 'positive', 'negative', or 'both'", 
-        choices = c("positive", "negative", "both"),
+        #choices = c("positive", "negative", "both"),
     ),
     make_option(c("--metadata_file"),
         type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples_2.xlsx", # nolint

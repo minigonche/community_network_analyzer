@@ -16,7 +16,7 @@ chmod +x network_build.sh
 
 
 sbatch \
-  --job-name=network_build -p amd \
+  --job-name=nt_build -p amd \
   --ntasks-per-node=1 --nodes=1 \
   --mem=2G --time 1:00:00 \
   network_build.sh

@@ -1,5 +1,5 @@
 BootStrap: docker
-From: minigonche/community_network_analyzer:latest
+From: rocker/tidyverse:4
 
 %labels
     Maintainer "Felipe González Casabianca <minigonche@gmail.com>"
@@ -14,3 +14,14 @@ From: minigonche/community_network_analyzer:latest
 
 %apprun Rscript
   exec Rscript "${@}"
+
+%post
+    apt-get update && apt-get install -y cmake \
+    && R -e "install.packages(c('missMDA'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
+    && R -e "install.packages(c('optparse'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
+    && R -e "install.packages(c('readxl','tidyr','dplyr', 'igraph','vegan'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
+    && R -e "devtools::install_github('GraceYoon/SPRING')" \
+    && rm -rf /tmp/downloaded_packages/
+
+
+
