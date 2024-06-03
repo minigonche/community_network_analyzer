@@ -76,7 +76,7 @@ replace_missing <- opt$replace_missing
 if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
     df_meta <- read_excel(metadata_file)
 } else {
-   df_meta <- read.csv(metadata_file)
+    df_meta <- read.csv(metadata_file)
 }
 
 

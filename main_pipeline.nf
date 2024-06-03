@@ -7,7 +7,6 @@ process split_files {
     path input_folder
     path metadata_file
 
-
     output:
     path "*.csv"
 
@@ -26,7 +25,8 @@ process build_network {
 
 
     output:
-    path "*.graphml"
+    path "*.graphml", emit: graph
+    path "*.RData", optional: true
 
     script:
     """            
