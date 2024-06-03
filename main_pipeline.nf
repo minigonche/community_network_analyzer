@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-
 process split_files {
     input:
     val cycle
