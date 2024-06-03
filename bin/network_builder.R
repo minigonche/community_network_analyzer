@@ -23,8 +23,10 @@ load_pckg("optparse")
 load_pckg("readxl")
 load_pckg("missMDA")
 
-source('/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/bin/pca_impute.R', chdir = TRUE)
-
+## Load the script for missing data imputation
+# Scripts in `bin` should be added to $PATH by Nextflow
+scr <- system2(command = "which", args = "pca_impute.R")
+source(file = scr)
 
 seed <- 42
 
