@@ -3,7 +3,7 @@
 ## Usage
 # Rscript network_builder.R \
 #  --input_file gene_abundances_long.csv \
-#  --only_positive TRUE \
+#  --edge_sign both \
 #  --metadata_file sample_metadata.xlsx \
 #  --replace_missing FALSE \
 #  --metadata_cols "CN,H2O_content_volumetric,Annual_Precipitation,Annual_Mean_Temperature"
@@ -23,10 +23,9 @@ load_pckg("optparse")
 load_pckg("readxl")
 load_pckg("missMDA")
 
-## Load the script for missing data imputation
-# Scripts in `bin` should be added to $PATH by Nextflow
-scr <- system2(command = "which", args = "pca_impute.R")
-source(file = scr)
+
+box::use(./pca_impute[...])
+
 
 seed <- 42
 

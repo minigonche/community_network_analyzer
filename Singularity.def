@@ -17,6 +17,7 @@ From: rocker/tidyverse:4
 
 %post
     apt-get update && apt-get install -y cmake \
+    && R -e "install.packages(c('box'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
     && R -e "install.packages(c('missMDA'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
     && R -e "install.packages(c('optparse'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
     && R -e "install.packages(c('readxl','tidyr','dplyr', 'igraph','vegan'), dependencies=TRUE, repos='http://cran.rstudio.com/')" \
