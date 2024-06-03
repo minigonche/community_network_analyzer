@@ -1,11 +1,12 @@
 #!/usr/bin/env Rscript
 
 ## Imputation of missing data using PCA
-library(missMDA)
+box::use(missMDA[...])
 
 
 
 ## Main funciton
+#' @export
 pca_impute <- function(datt, columns = NULL){
   # columns = vector of column names used to construct PCA
 

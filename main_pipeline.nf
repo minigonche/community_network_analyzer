@@ -1,12 +1,10 @@
 #!/usr/bin/env nextflow
 
-
 process split_files {
     input:
     val cycle
     path input_folder
     path metadata_file
-
 
     output:
     path "*.csv"
@@ -26,7 +24,8 @@ process build_network {
 
 
     output:
-    path "*.graphml"
+    path "*.graphml", emit: graph
+    path "*.RData", optional: true
 
     script:
     """            

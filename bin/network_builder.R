@@ -3,7 +3,7 @@
 ## Usage
 # Rscript network_builder.R \
 #  --input_file gene_abundances_long.csv \
-#  --only_positive TRUE \
+#  --edge_sign both \
 #  --metadata_file sample_metadata.xlsx \
 #  --replace_missing FALSE \
 #  --metadata_cols "CN,H2O_content_volumetric,Annual_Precipitation,Annual_Mean_Temperature"
@@ -23,7 +23,8 @@ load_pckg("optparse")
 load_pckg("readxl")
 load_pckg("missMDA")
 
-source('/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/bin/pca_impute.R', chdir = TRUE)
+
+box::use(./pca_impute[...])
 
 
 seed <- 42
@@ -74,7 +75,7 @@ replace_missing <- opt$replace_missing
 if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
     df_meta <- read_excel(metadata_file)
 } else {
-   df_meta <- read.csv(metadata_file)
+    df_meta <- read.csv(metadata_file)
 }
 
 
@@ -289,3 +290,7 @@ for(i in seq(1, length(cap$CCA$eig))){
 cat("\nExporting graph\n")
 write_graph(g,  gsub(".csv", ".graphml", input_file), "graphml")
 
+# Write auxiliary data in R format
+save(g, cap, fit.spring,
+    file = gsub(".csv", ".RData", input_file),
+    compress = "xz")
