@@ -23,7 +23,9 @@ load_pckg("optparse")
 load_pckg("readxl")
 load_pckg("missMDA")
 
+
 box::use(./pca_impute[...])
+
 
 seed <- 42
 
@@ -73,7 +75,7 @@ replace_missing <- opt$replace_missing
 if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
     df_meta <- read_excel(metadata_file)
 } else {
-   df_meta <- read.csv(metadata_file)
+    df_meta <- read.csv(metadata_file)
 }
 
 
@@ -288,3 +290,7 @@ for(i in seq(1, length(cap$CCA$eig))){
 cat("\nExporting graph\n")
 write_graph(g,  gsub(".csv", ".graphml", input_file), "graphml")
 
+# Write auxiliary data in R format
+save(g, cap, fit.spring,
+    file = gsub(".csv", ".RData", input_file),
+    compress = "xz")
