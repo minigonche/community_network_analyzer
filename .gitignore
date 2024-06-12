@@ -2,6 +2,8 @@
 *.sif
 singularity_images
 
+pipeline_info/
+
 LUCAS_Funct
 input
 export

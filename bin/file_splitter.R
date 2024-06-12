@@ -28,6 +28,10 @@ option_list <- list(
     make_option(c("--metadata_file"),
         type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples.xlsx", # nolint
         help = "Location of the metadata file"
+    ),
+    make_option(c("--split_by_lc"),
+        type = "logical", default = TRUE, 
+        help = "Split the file by land cover"
     )
 )
 
@@ -39,6 +43,7 @@ input_cycle <- opt$cycle
 input_folder <- opt$input_folder
 level <- opt$level
 metadata_file <- opt$metadata_file
+split_by_lc <- opt$split_by_lc
 
 
 # Start Scripts
@@ -70,11 +75,23 @@ df <- df %>%
     select("Gene", "SampleID", "Abundance")
 # Merges
 df <- df %>% left_join(df_meta, by <- join_by(SampleID == SampleID))
-# Filters by land cover
-for (lc in land_cover_options) {
-    df_temp <- df %>%
-        filter(get({{ land_cover_column }}) == lc) %>%
+
+# Outputs all all land covers
+df_temp <- df %>%
         select("Gene", "SampleID", "Abundance", all_of(land_cover_column))
-    # Write the file
-    write.csv(df_temp, paste(input_cycle, "-", lc, ".csv", sep = ""), row.names = FALSE)
+# Write the file
+write.csv(df_temp, paste(input_cycle, "-", "all_lc", ".csv", sep = ""), row.names = FALSE)
+
+if(split_by_lc)
+{
+    # Filters by land cover
+    for (lc in land_cover_options) {
+        df_temp <- df %>%
+            filter(get({{ land_cover_column }}) == lc) %>%
+            select("Gene", "SampleID", "Abundance", all_of(land_cover_column))
+        # Write the file
+        write.csv(df_temp, paste(input_cycle, "-", lc, ".csv", sep = ""), row.names = FALSE)
+    }
+
 }
+

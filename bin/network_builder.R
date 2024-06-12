@@ -6,7 +6,9 @@
 #  --edge_sign both \
 #  --metadata_file sample_metadata.xlsx \
 #  --replace_missing FALSE \
+#  --quantitative TRUE \
 #  --metadata_cols "CN,H2O_content_volumetric,Annual_Precipitation,Annual_Mean_Temperature"
+
 
 
 load_pckg <- function(pkg = "data.table"){
@@ -32,19 +34,14 @@ seed <- 42
 # Define the option parser
 option_list <- list(
     make_option(c("--input_file"),
-        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/work/ba/10afc8be37ef894256ad78789ff100/P_cycle-grassland.csv",
+        type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/work/39/ed91dc52a9ba4ee58e18963c6ee3a6/all_cycles-all_lc.csv",
         help = "Location of the input file"
     ),
-    make_option(c("--only_positive"),
-        type = "logical", default = FALSE, 
-        help = "If the graph should only include positive weights"
-    ),  
     make_option(
         c("--edge_sign"), 
         type = "character", 
         default = "both", 
         help = "Mode of operation: 'positive', 'negative', or 'both'", 
-        #choices = c("positive", "negative", "both"),
     ),
     make_option(c("--metadata_file"),
         type = "character", default = "/home/minigonche/Dropbox/Projects/TartuU/community_network_analyzer/LUCAS_Funct/metadata_for_samples_2.xlsx", # nolint
@@ -58,6 +55,10 @@ option_list <- list(
     make_option(c("--replace_missing"),
         type = "logical", default = TRUE, 
         help = "Replace missing metadata"
+    ),
+    make_option(c("--quantitative"),
+        type = "logical", default = TRUE, 
+        help = "If false, the data is assumed to be compositional and will be transformed using mclr "
     )
 )
 
@@ -70,6 +71,7 @@ edge_sign <- opt$edge_sign
 metadata_file <- opt$metadata_file
 selected_meta_columns <- opt$metadata_cols
 replace_missing <- opt$replace_missing
+quantitative <- opt$quantitative
 
 # Load metadata
 if(grepl("\\.xlsx$", metadata_file) || grepl("\\.xls$", metadata_file)){
@@ -129,30 +131,38 @@ final_meta_columns <- colnames(df_meta)
 final_meta_columns <- final_meta_columns[ ! final_meta_columns %in% "SampleID" ]
 
 # Load gene abundances, Reads and removes unused columns
-df <- read.csv(input_file) %>%
+df_all <- read.csv(input_file) %>%
     select("SampleID", "Gene", "Abundance")
 
 
 # Validate sample sets
-nonoverlaping_samples <- setdiff(unique(df$SampleID), unique(df_meta$SampleID))
+nonoverlaping_samples <- setdiff(unique(df_all$SampleID), unique(df_meta$SampleID))
 if(length(nonoverlaping_samples) > 0){
     cat("\nWARNING: some samples are missing from metadata or gene-abundance table:\n")
     cat("  n = ", length(nonoverlaping_samples), "; ", paste(nonoverlaping_samples, collapse = ", "), "\n")
     cat(".. Subsetting to a common sample set\n")
 
-    samples_in_common <- intersect(unique(df$SampleID), unique(df_meta$SampleID))
+    samples_in_common <- intersect(unique(df_all$SampleID), unique(df_meta$SampleID))
     if(length(samples_in_common) == 0){ stop("ERROR: no samples in common!\n") }
-    df <- df[ df$SampleID %in% samples_in_common,  ]
+    df_all <- df_all[ df_all$SampleID %in% samples_in_common,  ]
     df_meta <- df_meta[ df_meta$SampleID %in% samples_in_common,  ]
 }
 
 rownames(df_meta) <- df_meta$SampleID
+# Removes Duplicates
+df_filtered <- df_all %>% distinct(SampleID, Gene, .keep_all = TRUE)
+
+if(dim(df_filtered)[1] < dim(df_all)[1])
+{
+    cat("\nWARNING: Data contains duplicates. Dropped:", dim(df_all)[1] - dim(df_filtered)[1]," records\n")
+}
 
 # Pivots
 # Genes as Columns
-df <- df %>%
+df <- df_filtered %>%
     pivot_wider(names_from = Gene, values_from = Abundance) 
     
+
 # Aligns Meta and Abundance
 df_meta <- df_meta[df_meta$SampleID %in% df$SampleID, ]
 df_meta <- df_meta[match(df_meta$SampleID, df$SampleID), ]
@@ -177,7 +187,7 @@ fit.spring <- suppressPackageStartupMessages(
     SPRING(
     X,
     Rmethod = "approx",
-    quantitative = TRUE,
+    quantitative = quantitative,
     lambdaseq = "data-specific",
     nlambda = 50,
     rep.num = 50,
@@ -239,9 +249,17 @@ g = set_graph_attr(g, "num_clusters", max(membership(communities)))
 V(g)$membership = membership(communities)
 
 # Assortativity
-
+cat("\nEstimates Assortativity\n")
 ## mCLR
-mdf <- SPRING::mclr(df, base = exp(1), tol = 1e-16, eps = NULL, atleast = 1)
+if(quantitative)
+{
+    cat("\n    Standarizes\n")
+    # Standarize by gene to give each gene the same importance
+   mdf <- as.data.frame(scale(df)) 
+}else {
+   cat("\n   Uses mCLR\n")
+   mdf <- SPRING::mclr(df, base = exp(1), tol = 1e-16, eps = NULL, atleast = 1)
+}
 
 ## Constrained ordination (db-RDA)
 formula <- as.formula(paste("mdf", "~", paste(final_meta_columns, collapse = " + ")))

@@ -5,31 +5,36 @@ process split_files {
     val cycle
     path input_folder
     path metadata_file
+    val split_by_lc
 
     output:
     path "*.csv"
 
     script:
     """            
-    file_splitter.R --cycle=$cycle --input_folder=$input_folder --metadata_file=$metadata_file    
+    file_splitter.R --cycle=$cycle --input_folder=$input_folder --metadata_file=$metadata_file --split_by_lc=$split_by_lc   
     """    
 
 }
 
 process build_network {
+
+    publishDir "${params.outDir}", mode: 'copy'
+
     input:
     path input_file
     path metadata_file
     val metadata_cols
+    val quantitative
 
-
+    
     output:
     path "*.graphml", emit: graph
     path "*.RData", optional: true
 
     script:
     """            
-    network_builder.R --input_file=$input_file --metadata_file=$metadata_file --metadata_cols=$metadata_cols    
+    network_builder.R --input_file=$input_file --metadata_file=$metadata_file --metadata_cols=$metadata_cols --quantitative=$quantitative    
     """    
 
 }
@@ -48,17 +53,21 @@ process PRINT_PATH {
 workflow {
 
     // Loads the parameters
+    split_by_lc = params.split_by_lc
+    quantitative = params.quantitative
     input_folder = params.input_folder
     metadata_file = params.metadata_file
     metadata_cols = params.metadata_cols
+    
 
     // Splits the files into cycles
     cycles = channel.from( params.cycles)
-    divided_file_paths = split_files(cycles, input_folder, metadata_file)
+    
+    divided_file_paths = split_files(cycles, input_folder, metadata_file, split_by_lc)
 
-    graph_paths = build_network(divided_file_paths.flatten(), metadata_file, metadata_cols)
+    graph_paths = build_network(divided_file_paths.flatten(), metadata_file, metadata_cols, quantitative)
 
-    graph_paths.view { it }
+    //graph_paths.view { it }
 
 
 }
