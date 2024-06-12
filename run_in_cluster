@@ -11,13 +11,10 @@ export NXF_OPTS="-Xms500M -Xmx16G"
 ## Specify the cache directory for a Singularity images
 export NXF_SINGULARITY_CACHEDIR="$HOME/Singularity_images/"
 
-nextflow run main_pipeline.nf -profile production -resume
+nextflow run main_pipeline.nf -profile production -resume -qs "$SLURM_NTASKS"
 EOT
 
-#  -qs "$SLURM_NTASKS"
-
 chmod +x network_build.sh
-
 
 
 sbatch \
